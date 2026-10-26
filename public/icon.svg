@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#c2410c" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#f59e0b" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Container rounded badge -->
+  <rect width="64" height="64" rx="14" fill="url(#bgGrad)" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.7"/>
+
+  <!-- Structural foundation line -->
+  <path d="M12 48L52 48" stroke="#334155" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+  <!-- Construction Hard Hat Silhouette -->
+  <g filter="url(#glow)">
+    <!-- Helmet Dome -->
+    <path d="M18 36C18 24.9543 24.268 18 32 18C39.732 18 46 24.9543 46 36H18Z" fill="url(#amberGrad)"/>
+    
+    <!-- Helmet Top Structural Rib -->
+    <path d="M30 17H34V35H30V17Z" fill="#fef3c7" opacity="0.95"/>
+    
+    <!-- Lateral reinforce ridges -->
+    <path d="M24 23C25 21 27 20 27 20L27 34H24V23Z" fill="#fbbf24" opacity="0.7"/>
+    <path d="M40 23C39 21 37 20 37 20L37 34H40V23Z" fill="#d97706" opacity="0.7"/>
+
+    <!-- Helmet Brim / Visor -->
+    <path d="M13 36C13 35.4477 13.4477 35 14 35H50C50.5523 35 51 35.4477 51 36C51 38.5 48.5 40 45 40H19C15.5 40 13 38.5 13 36Z" fill="url(#flameGrad)"/>
+    <path d="M14 36H50" stroke="#fef3c7" stroke-width="1" opacity="0.45"/>
+  </g>
+
+  <!-- Structural Steel Base Beam with Gold Rivets -->
+  <rect x="16" y="44" width="32" height="6" rx="1.5" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+  <circle cx="21" cy="47" r="1.2" fill="#fbbf24"/>
+  <circle cx="32" cy="47" r="1.2" fill="#fbbf24"/>
+  <circle cx="43" cy="47" r="1.2" fill="#fbbf24"/>
+</svg>

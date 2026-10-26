@@ -1,0 +1,1554 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                      String   @id @default(cuid())
+  name                    String
+  slug                    String   @unique
+  code                    String
+  logoUrl                 String?
+  address                 String?
+  city                    String?  @default("Nairobi")
+  country                 String   @default("Kenya")
+  phone                   String?
+  email                   String?
+  website                 String?
+  
+  // Legal & Tax (Kenya-first)
+  taxPin                  String?  // e.g. KRA PIN
+  ncaRegistration         String?  // e.g. NCA1 Building & Civil Works
+  vatRate                 Float    @default(16.0)
+  currency                String   @default("KSh")
+  timezone                String   @default("Africa/Nairobi")
+
+  // Project Settings
+  projectPrefix           String   @default("PRJ-")
+  defaultProjectStatus    String   @default("PLANNING")
+  progressCalcMethod      String   @default("PHASE_WEIGHTED")
+
+  // Financial & Document Settings
+  invoicePrefix           String   @default("INV-")
+  poPrefix                String   @default("PO-")
+  mrPrefix                String   @default("MR-")
+  defaultPaymentTerms     String   @default("Net 30 Days")
+  documentHeaderNote      String?
+  documentFooterNote      String?  @default("All construction works and deliveries are subject to Structa QA/QC verification.")
+  brandingAccentColor     String   @default("#f98b07")
+
+  // SaaS Plan & Status
+  plan                    String   @default("PROFESSIONAL")
+  status                  String   @default("ACTIVE")
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  users                   User[]
+  rolePermissions         RolePermission[]
+  auditLogs               AuditLog[]
+  notifications           Notification[]
+  clients                 Client[]
+  projects                Project[]
+  sites                   Site[]
+  projectPhases           ProjectPhase[]
+  projectMembers          ProjectMember[]
+  documents               ProjectDocument[]
+  tasks                   ProjectTask[]
+  milestones              ProjectMilestone[]
+  boqItems                BoqItem[]
+  budgetLines             ProjectBudgetLine[]
+  suppliers               Supplier[]
+  materials               Material[]
+  projectMaterialStocks   ProjectMaterialStock[]
+  materialUsageLogs       MaterialUsageLog[]
+  materialRequests         MaterialRequest[]
+  purchaseOrders           PurchaseOrder[]
+  goodsReceivedNotes       GoodsReceivedNote[]
+  siteWorkers              SiteWorker[]
+  workerAttendanceLogs     WorkerAttendanceLog[]
+  subcontractors           Subcontractor[]
+  equipmentAssets          EquipmentAsset[]
+  equipmentMaintenanceLogs EquipmentMaintenanceLog[]
+  siteReports              SiteReport[]
+  sitePhotos               SitePhoto[]
+  projectIssues            ProjectIssue[]
+  qualitySafetyRecords     QualitySafetyInspection[]
+  projectExpenses          ProjectExpense[]
+  clientInvoices           ClientInvoice[]
+  financialPayments        FinancialPayment[]
+  projectVariations        ProjectVariation[]
+  approvalWorkflows        ApprovalWorkflowItem[]
+  clientPortalUpdates      ClientPortalUpdate[]
+  automationRules          AutomationWatchdogRule[]
+}
+
+model User {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  name            String
+  email           String       @unique
+  passwordHash    String
+  phone           String?
+  jobTitle        String?
+  department      String?
+  employeeCode    String?
+  
+  // Roles: SUPER_ADMIN, ORGANIZATION_OWNER, ADMINISTRATOR, PROJECT_MANAGER,
+  // SITE_MANAGER, QUANTITY_SURVEYOR, PROCUREMENT_OFFICER, ACCOUNTANT, SITE_STAFF, CLIENT
+  role            String       @default("PROJECT_MANAGER")
+  
+  // Status: ACTIVE, INVITED, INACTIVE, SUSPENDED
+  status          String       @default("ACTIVE")
+  
+  lastLoginAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  managedProjects        Project[]                 @relation("ProjectManagerRelation")
+  siteManagedProjects    Project[]                 @relation("SiteManagerRelation")
+  qsProjects             Project[]                 @relation("QSRelation")
+  managedSites           Site[]                    @relation("SiteLeadRelation")
+  ledPhases              ProjectPhase[]            @relation("PhaseLeadRelation")
+  projectMemberships     ProjectMember[]
+  uploadedDocuments      ProjectDocument[]
+  assignedTasks          ProjectTask[]             @relation("TaskAssigneeRelation")
+  createdTasks           ProjectTask[]             @relation("TaskCreatorRelation")
+  ownedMilestones        ProjectMilestone[]        @relation("MilestoneOwnerRelation")
+  createdBoqItems        BoqItem[]                 @relation("BoqCreatorRelation")
+  updatedBudgetLines     ProjectBudgetLine[]       @relation("BudgetUpdaterRelation")
+  updatedMaterialStocks  ProjectMaterialStock[]    @relation("MaterialStockUpdaterRelation")
+  recordedMaterialLogs   MaterialUsageLog[]        @relation("MaterialLogRecorderRelation")
+  requestedMaterialReqs  MaterialRequest[]         @relation("MRRequesterRelation")
+  approvedMaterialReqs   MaterialRequest[]         @relation("MRApproverRelation")
+  createdPurchaseOrders  PurchaseOrder[]           @relation("POCreatorRelation")
+  approvedPurchaseOrders PurchaseOrder[]           @relation("POApproverRelation")
+  receivedGrns           GoodsReceivedNote[]       @relation("GRNReceiverRelation")
+  recordedAttendanceLogs WorkerAttendanceLog[]     @relation("AttendanceRecorderRelation")
+  recordedMaintenance    EquipmentMaintenanceLog[] @relation("MaintenanceRecorderRelation")
+  submittedSiteReports   SiteReport[]              @relation("SiteReportSubmitterRelation")
+  reviewedSiteReports    SiteReport[]              @relation("SiteReportReviewerRelation")
+  uploadedSitePhotos     SitePhoto[]               @relation("SitePhotoUploaderRelation")
+  reportedProjectIssues  ProjectIssue[]            @relation("IssueReporterRelation")
+  assignedProjectIssues  ProjectIssue[]            @relation("IssueAssigneeRelation")
+  inspectedQualitySafety QualitySafetyInspection[] @relation("QSIInspectorRelation")
+  assignedQualitySafety  QualitySafetyInspection[] @relation("QSIResponsibleRelation")
+  recordedExpenses       ProjectExpense[]          @relation("ExpenseRecorderRelation")
+  approvedExpenses       ProjectExpense[]          @relation("ExpenseApproverRelation")
+  createdInvoices        ClientInvoice[]           @relation("InvoiceCreatorRelation")
+  recordedPayments       FinancialPayment[]        @relation("PaymentRecorderRelation")
+  requestedVariations    ProjectVariation[]        @relation("VariationRequesterRelation")
+  approvedVariations     ProjectVariation[]        @relation("VariationApproverRelation")
+  requestedApprovals     ApprovalWorkflowItem[]    @relation("ApprovalRequesterRelation")
+  decidedApprovals       ApprovalWorkflowItem[]    @relation("ApprovalDeciderRelation")
+  publishedPortalUpdates ClientPortalUpdate[]      @relation("PortalPublisherRelation")
+
+  @@index([organizationId])
+  @@index([organizationId, role])
+}
+
+model RolePermission {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role            String
+  permissionsJson String       // JSON string of string[] permission keys
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([organizationId, role])
+}
+
+model AuditLog {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action          String       // e.g. USER_CREATED, ROLE_UPDATED, SETTINGS_UPDATED, PROJECT_CREATED, TASK_CREATED
+  entity          String       // e.g. User, Organization, Project, Client, ProjectPhase, ProjectTask
+  entityId        String?
+  description     String
+  previousValue   String?      // JSON string
+  newValue        String?      // JSON string
+  
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entity])
+}
+
+model Notification {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title           String
+  message         String
+  type            String       @default("INFO") // INFO, SUCCESS, WARNING, CRITICAL
+  category        String       @default("SYSTEM") // SYSTEM, PROJECT, BUDGET, PROCUREMENT, SITE, FINANCE
+  link            String?
+  isRead          String       @default("FALSE") // FALSE or TRUE
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+// ============================================================================
+// PHASE 2: CLIENTS, PROJECTS, SITES, PHASES, PROJECT TEAM & DOCUMENTS
+// ============================================================================
+
+model Client {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name            String
+  code            String
+  clientType      String       @default("CORPORATE") // CORPORATE, GOVERNMENT, PRIVATE_DEVELOPER, INDIVIDUAL
+  contactPerson   String
+  phone           String
+  email           String
+  address         String?
+  city            String?      @default("Nairobi")
+  taxPin          String?
+  notes           String?
+  status          String       @default("ACTIVE") // ACTIVE, INACTIVE
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  projects            Project[]
+  documents           ProjectDocument[]
+  invoices            ClientInvoice[]
+  payments            FinancialPayment[]
+  approvalWorkflows   ApprovalWorkflowItem[]
+  clientPortalUpdates ClientPortalUpdate[]
+
+  @@index([organizationId])
+  @@unique([organizationId, code])
+}
+
+model Project {
+  id                      String       @id @default(cuid())
+  organizationId          String
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  code                    String
+  name                    String
+  projectType             String       @default("RESIDENTIAL") // RESIDENTIAL, COMMERCIAL, INDUSTRIAL, CIVIL_INFRASTRUCTURE, RENOVATION, MIXED_USE
+  location                String
+  county                  String       @default("Nairobi")
+  description             String?
+
+  clientId                String?
+  client                  Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  projectManagerId        String?
+  projectManager          User?        @relation("ProjectManagerRelation", fields: [projectManagerId], references: [id], onDelete: SetNull)
+
+  siteManagerId           String?
+  siteManager             User?        @relation("SiteManagerRelation", fields: [siteManagerId], references: [id], onDelete: SetNull)
+
+  quantitySurveyorId      String?
+  quantitySurveyor        User?        @relation("QSRelation", fields: [quantitySurveyorId], references: [id], onDelete: SetNull)
+
+  startDate               DateTime
+  expectedCompletionDate  DateTime
+  actualCompletionDate    DateTime?
+
+  // Financial & Cost Control (KSh)
+  contractValue           Float        @default(0)
+  budget                  Float        @default(0)
+  committedCost           Float        @default(0)
+  actualCost              Float        @default(0)
+  invoicedAmount          Float        @default(0)
+  paidAmount              Float        @default(0)
+
+  // Statuses: PLANNING, ACTIVE, ON_HOLD, DELAYED, COMPLETED, CANCELLED
+  status                  String       @default("PLANNING")
+  plannedProgress         Float        @default(0)
+  progress                Float        @default(0)
+
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  sites                   Site[]
+  phases                  ProjectPhase[]
+  teamMembers             ProjectMember[]
+  documents               ProjectDocument[]
+  tasks                   ProjectTask[]
+  milestones              ProjectMilestone[]
+  boqItems                BoqItem[]
+  budgetLines             ProjectBudgetLine[]
+  projectMaterialStocks   ProjectMaterialStock[]
+  materialUsageLogs       MaterialUsageLog[]
+  materialRequests         MaterialRequest[]
+  purchaseOrders           PurchaseOrder[]
+  goodsReceivedNotes       GoodsReceivedNote[]
+  siteWorkers              SiteWorker[]
+  workerAttendanceLogs     WorkerAttendanceLog[]
+  subcontractors           Subcontractor[]
+  equipmentAssets          EquipmentAsset[]
+  equipmentMaintenanceLogs EquipmentMaintenanceLog[]
+  siteReports              SiteReport[]
+  sitePhotos               SitePhoto[]
+  projectIssues            ProjectIssue[]
+  qualitySafetyRecords     QualitySafetyInspection[]
+  projectExpenses          ProjectExpense[]
+  clientInvoices           ClientInvoice[]
+  financialPayments        FinancialPayment[]
+  projectVariations        ProjectVariation[]
+  approvalWorkflows        ApprovalWorkflowItem[]
+  clientPortalUpdates      ClientPortalUpdate[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@unique([organizationId, code])
+}
+
+model Site {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  code            String
+  name            String
+  location        String
+  county          String       @default("Nairobi")
+  gpsCoordinates  String?
+  siteManagerId   String?
+  siteManager     User?        @relation("SiteLeadRelation", fields: [siteManagerId], references: [id], onDelete: SetNull)
+  status          String       @default("ACTIVE") // ACTIVE, MOBILIZING, STANDBY, COMPLETED
+  notes           String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tasks                 ProjectTask[]
+  projectMaterialStocks ProjectMaterialStock[]
+  materialUsageLogs     MaterialUsageLog[]
+  materialRequests      MaterialRequest[]
+  purchaseOrders        PurchaseOrder[]
+  goodsReceivedNotes    GoodsReceivedNote[]
+  siteWorkers           SiteWorker[]
+  workerAttendanceLogs  WorkerAttendanceLog[]
+  subcontractors        Subcontractor[]
+  equipmentAssets       EquipmentAsset[]
+  siteReports           SiteReport[]
+  sitePhotos            SitePhoto[]
+  projectIssues         ProjectIssue[]
+  qualitySafetyRecords  QualitySafetyInspection[]
+  projectExpenses       ProjectExpense[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model ProjectPhase {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  sequenceOrder   Int          @default(1)
+  name            String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime
+  budget          Float        @default(0)
+  actualCost      Float        @default(0)
+  plannedProgress Float        @default(0)
+  progress        Float        @default(0)
+  // Status: NOT_STARTED, IN_PROGRESS, DELAYED, COMPLETED
+  status          String       @default("NOT_STARTED")
+
+  leadUserId      String?
+  leadUser        User?        @relation("PhaseLeadRelation", fields: [leadUserId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tasks                ProjectTask[]
+  milestones           ProjectMilestone[]
+  boqItems             BoqItem[]
+  budgetLines          ProjectBudgetLine[]
+  materialRequests     MaterialRequest[]
+  subcontractors       Subcontractor[]
+  siteReports          SiteReport[]
+  projectIssues        ProjectIssue[]
+  qualitySafetyRecords QualitySafetyInspection[]
+  projectExpenses      ProjectExpense[]
+  clientInvoices       ClientInvoice[]
+  projectVariations    ProjectVariation[]
+  approvalWorkflows    ApprovalWorkflowItem[]
+
+  @@index([organizationId])
+  @@index([projectId, sequenceOrder])
+}
+
+model ProjectMember {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectRole     String       // e.g. Project Manager, Resident Site Agent, Project QS, Site Foreman
+  allocationPct   Int          @default(100)
+  assignedAt      DateTime     @default(now())
+
+  @@unique([projectId, userId])
+  @@index([organizationId])
+}
+
+model ProjectDocument {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId        String?
+  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  title           String
+  documentNumber  String
+  // Categories: CONTRACT, ARCHITECTURAL_DRAWING, STRUCTURAL_DRAWING, BOQ, PERMIT_APPROVAL, SITE_REPORT, CERTIFICATE, QUOTATION
+  category        String       @default("CONTRACT")
+  version         String       @default("v1.0")
+  fileName        String
+  fileSizeLabel   String       @default("2.4 MB")
+  status          String       @default("APPROVED") // DRAFT, UNDER_REVIEW, APPROVED, SUPERSEDED
+  notes           String?
+
+  uploadedById    String?
+  uploadedBy      User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
+
+  approvalWorkflows ApprovalWorkflowItem[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+// ============================================================================
+// PHASE 3: TASKS, DEPENDENCIES, MILESTONES & PROGRESS TRACKING
+// ============================================================================
+
+model ProjectTask {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId         String?
+  phase           ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  siteId          String?
+  site            Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  code            String
+  name            String
+  description     String?
+
+  assignedToId    String?
+  assignedTo      User?         @relation("TaskAssigneeRelation", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?         @relation("TaskCreatorRelation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  startDate       DateTime
+  dueDate         DateTime
+  completedAt     DateTime?
+
+  // Priority: LOW, MEDIUM, HIGH, CRITICAL
+  priority        String        @default("MEDIUM")
+  // Status: NOT_STARTED, IN_PROGRESS, BLOCKED, COMPLETED
+  status          String        @default("NOT_STARTED")
+  progress        Float         @default(0)
+
+  // Dependency relationship (Prerequisite task)
+  dependsOnTaskId String?
+  dependsOnTask   ProjectTask?  @relation("TaskDependencyRelation", fields: [dependsOnTaskId], references: [id], onDelete: SetNull)
+  dependentTasks  ProjectTask[] @relation("TaskDependencyRelation")
+
+  notes           String?
+  blockerReason   String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId, status])
+  @@index([phaseId])
+  @@index([assignedToId])
+}
+
+model ProjectMilestone {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId             String?
+  phase               ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  code                String
+  title               String
+  description         String?
+  targetDate          DateTime
+  achievedDate        DateTime?
+
+  // Status: UPCOMING, IN_PROGRESS, ACHIEVED, DELAYED
+  status              String        @default("UPCOMING")
+  valuationLinkedNote String?       // e.g. Triggers Interim Valuation Certificate #4 (15%)
+
+  ownerId             String?
+  owner               User?         @relation("MilestoneOwnerRelation", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+// ============================================================================
+// PHASE 4: BOQ (BILLS OF QUANTITIES) & BUDGET MANAGEMENT
+// ============================================================================
+
+model BoqItem {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId             String?
+  phase               ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  itemCode            String        // e.g. BOQ-A.01, BOQ-B.03, BOQ-C.02
+  description         String
+  // BOQ Sections: PRELIMINARIES, SUBSTRUCTURE, SUPERSTRUCTURE_CONCRETE, MASONRY_WALLING, STEELWORK, ROOFING, FINISHES, MEP_INSTALLATIONS, EXTERNAL_WORKS
+  category            String        @default("SUPERSTRUCTURE_CONCRETE")
+  // Cost Allocation Category: MATERIALS, LABOUR, EQUIPMENT, SUBCONTRACTORS, PROFESSIONAL_FEES
+  costCategory        String        @default("MATERIALS")
+  // Unit of Measurement: m³, m², m, kg, Tonnes, Bags, No., Item, Sum
+  unit                String        @default("m³")
+
+  quantity            Float         @default(0)
+  executedQuantity    Float         @default(0) // Measured & certified quantity on site
+  unitRate            Float         @default(0) // KSh rate per unit
+  totalAmount         Float         @default(0) // Server-calculated: quantity * unitRate
+  executedAmount      Float         @default(0) // Server-calculated: executedQuantity * unitRate
+
+  notes               String?
+  createdById         String?
+  createdBy           User?         @relation("BoqCreatorRelation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId, category])
+  @@index([phaseId])
+  @@unique([projectId, itemCode])
+}
+
+model ProjectBudgetLine {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId             String?
+  phase               ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  code                String        // e.g. BDG-RIV-MAT, BDG-RIV-LAB
+  // Categories (Section 13): MATERIALS, LABOUR, EQUIPMENT, TRANSPORT, SUBCONTRACTORS, PROFESSIONAL_FEES, PERMITS, UTILITIES, MISCELLANEOUS
+  category            String        @default("MATERIALS")
+  title               String
+  description         String?
+
+  // Budget -> Committed Cost -> Actual Cost -> Remaining Budget (Section 13)
+  allocatedBudget     Float         @default(0)
+  committedCost       Float         @default(0)
+  actualCost          Float         @default(0)
+  alertThresholdPct   Float         @default(85)
+
+  // Status: WITHIN_BUDGET, WATCH, OVERRUN_RISK, EXCEEDED
+  status              String        @default("WITHIN_BUDGET")
+  notes               String?
+
+  updatedById         String?
+  updatedBy           User?         @relation("BudgetUpdaterRelation", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId, category])
+  @@unique([projectId, code])
+}
+
+// ============================================================================
+// PHASE 5: MATERIALS CATALOG, SUPPLIERS, SITE STOCK & MATERIAL TRACKING
+// ============================================================================
+
+model Supplier {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  code                String        // e.g. SUP-001, SUP-002
+  name                String        // e.g. Bamburi Cement PLC, Devki Steel Mills Ltd.
+  // Categories: CEMENT_CONCRETE, STEEL_METALS, AGGREGATES_QUARRY, TIMBER_ROOFING, TILES_FINISHES, PAINTS_CHEMICALS, ELECTRICAL_MEP, PLUMBING_WATER, GENERAL_HARDWARE
+  category            String        @default("CEMENT_CONCRETE")
+  contactPerson       String
+  phone               String
+  email               String
+  address             String?
+  city                String?       @default("Nairobi")
+  taxPin              String?       // KRA PIN e.g. P051122334B
+  paymentTerms        String        @default("Net 30 Days")
+  bankName            String?
+  bankAccountNumber   String?
+  mpesaPaybill        String?       // e.g. Paybill 522522 / Acc: BAMBURI
+  suppliedMaterials   String        // Summary of primary materials supplied
+  rating              Float         @default(4.8)
+
+  // Financial Ledger Summary (Section 17)
+  totalPurchased      Float         @default(0)
+  totalPaid           Float         @default(0)
+  outstandingBalance  Float         @default(0) // Server-calculated: totalPurchased - totalPaid
+
+  // Status: ACTIVE, ON_HOLD, BLACKLISTED
+  status              String        @default("ACTIVE")
+  notes               String?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  preferredMaterials  Material[]          @relation("PreferredSupplierRelation")
+  purchaseOrders      PurchaseOrder[]
+  goodsReceivedNotes  GoodsReceivedNote[]
+
+  @@index([organizationId])
+  @@index([organizationId, category])
+  @@unique([organizationId, code])
+}
+
+model Material {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  code                String        // e.g. MAT-CEM-01, MAT-STL-01
+  name                String        // e.g. Portland Pozzolana Cement 32.5N (50kg Bag)
+  // Categories (Section 14): CEMENT_BINDERS, STEEL_REBAR, AGGREGATES_SAND, MASONRY_BLOCKS, TIMBER_FORMWORK, ROOFING_WATERPROOFING, TILES_FINISHES, PAINTS_COATINGS, PLUMBING_PIPES, ELECTRICAL_CABLES
+  category            String        @default("CEMENT_BINDERS")
+  // Unit: Bags, Tonnes, kg, Bars, m³, m², Pieces, Litres, Rolls, Lengths
+  unit                String        @default("Bags")
+  standardUnitCost    Float         @default(0) // KSh catalog benchmark rate
+  minimumReorderLevel Float         @default(50)
+  specification       String?       // e.g. KEBS KS EAS 18-1 Certified
+
+  preferredSupplierId String?
+  preferredSupplier   Supplier?     @relation("PreferredSupplierRelation", fields: [preferredSupplierId], references: [id], onDelete: SetNull)
+
+  status              String        @default("ACTIVE") // ACTIVE, DISCONTINUED
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  projectStocks       ProjectMaterialStock[]
+  usageLogs           MaterialUsageLog[]
+  materialRequests    MaterialRequest[]
+  purchaseOrders      PurchaseOrder[]
+  goodsReceivedNotes  GoodsReceivedNote[]
+
+  @@index([organizationId])
+  @@index([organizationId, category])
+  @@unique([organizationId, code])
+}
+
+model ProjectMaterialStock {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  materialId          String
+  material            Material      @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // Section 14 Quantities Tracking:
+  requiredQuantity    Float         @default(0) // Total BOQ / Planned requirement
+  requestedQuantity   Float         @default(0) // Requisitioned by site team
+  orderedQuantity     Float         @default(0) // Ordered on POs
+  receivedQuantity    Float         @default(0) // Delivered & received at site store
+  usedQuantity        Float         @default(0) // Issued & consumed in construction works
+  wastageQuantity     Float         @default(0) // Damaged / spilled / cut-off wastage
+  remainingQuantity   Float         @default(0) // Server-calculated: receivedQuantity - usedQuantity - wastageQuantity
+  reorderLevel        Float         @default(25)
+
+  unitCost            Float         @default(0) // KSh unit rate on this project
+  totalCost           Float         @default(0) // Server-calculated: receivedQuantity * unitCost
+
+  // Status: ADEQUATE, LOW_STOCK, CRITICAL_SHORTAGE, FULLY_STOCKED
+  status              String        @default("ADEQUATE")
+  notes               String?
+
+  lastUpdatedById     String?
+  lastUpdatedBy       User?         @relation("MaterialStockUpdaterRelation", fields: [lastUpdatedById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  usageLogs           MaterialUsageLog[]
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([siteId])
+  @@unique([projectId, materialId])
+}
+
+model MaterialUsageLog {
+  id                     String               @id @default(cuid())
+  organizationId         String
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectMaterialStockId String
+  projectMaterialStock   ProjectMaterialStock @relation(fields: [projectMaterialStockId], references: [id], onDelete: Cascade)
+  projectId              String
+  project                Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId                 String?
+  site                   Site?                @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  materialId             String
+  material               Material             @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // Transaction Types: ISSUE_TO_WORKS, DELIVERY_RECEIVED, WASTAGE_LOGGED, REQUIREMENT_UPDATED
+  transactionType        String               @default("ISSUE_TO_WORKS")
+  quantity               Float                @default(0)
+  unitCost               Float                @default(0)
+  totalCost              Float                @default(0)
+  workAreaOrPhase        String?              // e.g. Block A — 8th Floor Slab Pour
+  referenceNumber        String?              // e.g. SIN-RIV-019 or DN-88412
+  notes                  String?
+
+  recordedById           String?
+  recordedBy             User?                @relation("MaterialLogRecorderRelation", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt              DateTime             @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([projectId])
+  @@index([projectMaterialStockId])
+}
+
+// ============================================================================
+// PHASE 6: PROCUREMENT WORKFLOW (MATERIAL REQUESTS, PURCHASE ORDERS & GRNs)
+// ============================================================================
+
+model MaterialRequest {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId             String?
+  phase               ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  materialId          String
+  material            Material      @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  requestNumber       String        // e.g. MR-2026-001
+  title               String        // e.g. Block A 8th Floor Slab Cement Requisition
+  requestedQuantity   Float         @default(0)
+  approvedQuantity    Float         @default(0)
+  estimatedUnitCost   Float         @default(0)
+  estimatedTotalCost  Float         @default(0)
+
+  // Priority: LOW, MEDIUM, HIGH, URGENT
+  priority            String        @default("MEDIUM")
+  requiredByDate      DateTime
+
+  // Statuses (Section 15): DRAFT, SUBMITTED, APPROVED, REJECTED, ORDERED, PARTIALLY_RECEIVED, RECEIVED, CANCELLED
+  status              String        @default("SUBMITTED")
+
+  justification       String?       // Why site needs this material now
+  approvalNotes       String?       // PM / Procurement review notes
+
+  requestedById       String?
+  requestedBy         User?         @relation("MRRequesterRelation", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedById        String?
+  approvedBy          User?         @relation("MRApproverRelation", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt          DateTime?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  purchaseOrders      PurchaseOrder[]
+
+  @@index([organizationId])
+  @@index([projectId, status])
+  @@unique([organizationId, requestNumber])
+}
+
+model PurchaseOrder {
+  id                   String           @id @default(cuid())
+  organizationId       String
+  organization         Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId            String
+  project              Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId               String?
+  site                 Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  supplierId           String
+  supplier             Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  materialId           String
+  material             Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialRequestId    String?
+  materialRequest      MaterialRequest? @relation(fields: [materialRequestId], references: [id], onDelete: SetNull)
+
+  poNumber             String           // e.g. LPO-2026-001
+  quotationReference   String?          // e.g. QTN-BAM-2026-114
+
+  orderedQuantity      Float            @default(0)
+  receivedQuantity     Float            @default(0)
+  unitPrice            Float            @default(0)
+  discountAmount       Float            @default(0)
+  taxRatePct           Float            @default(16.0)
+  subtotalAmount       Float            @default(0) // Server-calculated: (orderedQuantity * unitPrice) - discountAmount
+  taxAmount            Float            @default(0) // Server-calculated: subtotalAmount * (taxRatePct / 100)
+  totalAmount          Float            @default(0) // Server-calculated: subtotalAmount + taxAmount
+  paidAmount           Float            @default(0)
+
+  paymentTerms         String           @default("Net 30 Days")
+  expectedDeliveryDate DateTime
+
+  // Statuses (Section 18): DRAFT, ISSUED, APPROVED, PARTIALLY_DELIVERED, DELIVERED, INVOICED, PAID, CANCELLED
+  status               String           @default("ISSUED")
+  notes                String?
+
+  createdById          String?
+  createdBy            User?            @relation("POCreatorRelation", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById         String?
+  approvedBy           User?            @relation("POApproverRelation", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt           DateTime?
+
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  goodsReceivedNotes   GoodsReceivedNote[]
+
+  @@index([organizationId])
+  @@index([projectId, status])
+  @@index([supplierId])
+  @@unique([organizationId, poNumber])
+}
+
+model GoodsReceivedNote {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  supplierId          String
+  supplier            Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  materialId          String
+  material            Material      @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  grnNumber           String        // e.g. GRN-2026-001
+  // Section 16 Material Receiving quantities:
+  orderedQuantity     Float         @default(0)
+  receivedQuantity    Float         @default(0) // Good usable quantity accepted into site store
+  damagedQuantity     Float         @default(0) // Damaged / rejected at site gate
+  missingQuantity     Float         @default(0) // Shortfall vs delivery note / PO
+
+  unitCost            Float         @default(0)
+  acceptedValue       Float         @default(0) // Server-calculated: receivedQuantity * unitCost
+
+  deliveryNoteNumber  String        // Supplier's physical Delivery Note # e.g. DN-BAM-88412
+  vehicleRegNumber    String?       // e.g. KDK 442P (30T Flatbed)
+  deliveryDate        DateTime      @default(now())
+
+  // Inspection Status: ACCEPTED, PARTIAL_ACCEPTANCE, REJECTED_DAMAGED
+  inspectionStatus    String        @default("ACCEPTED")
+  notes               String?
+
+  receivedById        String?
+  receivedBy          User?         @relation("GRNReceiverRelation", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+
+  @@index([organizationId, deliveryDate])
+  @@index([projectId])
+  @@index([purchaseOrderId])
+  @@unique([organizationId, grnNumber])
+}
+
+// ============================================================================
+// PHASE 7: WORKFORCE & LABOUR, SUBCONTRACTORS & EQUIPMENT FLEET
+// ============================================================================
+
+model SiteWorker {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  workerCode          String        // e.g. WRK-001, WRK-002
+  fullName            String
+  nationalId          String?       // Kenyan National ID #
+  phone               String        // M-Pesa disbursement phone e.g. +254 712 ...
+  // Categories (Section 19): SKILLED_ARTISAN, FOREMAN_SUPERVISOR, PLANT_OPERATOR, TECHNICIAN_MEP, CASUAL_LABOUR, SITE_SECURITY_STAFF
+  workerCategory      String        @default("SKILLED_ARTISAN")
+  tradeRole           String        // e.g. Master Mason, Lead Steel Fixer, Tower Crane Operator
+
+  dailyRate           Float         @default(1500) // KSh per day
+  overtimeHourlyRate  Float         @default(250)  // KSh per overtime hour
+  daysWorked          Float         @default(0)
+  overtimeHours       Float         @default(0)
+  totalEarned         Float         @default(0)    // Server-calculated: (daysWorked * dailyRate) + (overtimeHours * overtimeHourlyRate)
+  totalPaid           Float         @default(0)
+  unpaidBalance       Float         @default(0)    // Server-calculated: totalEarned - totalPaid
+
+  // Payment Status: PAID, PARTIALLY_PAID, UNPAID_MUSTER
+  paymentStatus       String        @default("PARTIALLY_PAID")
+  // Status: ACTIVE, ON_LEAVE, INACTIVE
+  status              String        @default("ACTIVE")
+  notes               String?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  attendanceLogs      WorkerAttendanceLog[]
+
+  @@index([organizationId])
+  @@index([projectId, workerCategory])
+  @@unique([organizationId, workerCode])
+}
+
+model WorkerAttendanceLog {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workerId            String
+  worker              SiteWorker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  attendanceDate      DateTime      @default(now())
+  daysCredited        Float         @default(1.0) // 1.0 Full Day, 0.5 Half Day
+  overtimeHours       Float         @default(0)
+  dailyWageAmount     Float         @default(0)   // Calculated wage for this shift
+  workAreaOrActivity  String        // e.g. Block A — 8th Floor Slab Steel Fixing
+  notes               String?
+
+  recordedById        String?
+  recordedBy          User?         @relation("AttendanceRecorderRelation", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime      @default(now())
+
+  @@index([organizationId, attendanceDate])
+  @@index([projectId])
+  @@index([workerId])
+}
+
+model Subcontractor {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId              String?
+  site                Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId             String?
+  phase               ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  code                String        // e.g. SUB-001
+  companyName         String
+  // Specialization (Section 20): ELECTRICAL_SOLAR, PLUMBING_MECHANICAL, LIFTS_ESCALATORS, ROOFING_WATERPROOFING, GLAZING_ALUMINIUM, MASONRY_PLASTERING, PAINTING_DECORATING, EARTHWORKS_PILING
+  specialization      String        @default("ELECTRICAL_SOLAR")
+  contactPerson       String
+  phone               String
+  email               String
+  ncaCategory         String?       // e.g. NCA-1 Electrical & Mechanical Engineering
+  taxPin              String?       // KRA PIN
+  scopeOfWorks        String
+
+  contractValue       Float         @default(0)
+  certifiedAmount     Float         @default(0) // Certified by QS to date
+  paidAmount          Float         @default(0)
+  retentionPct        Float         @default(10.0)
+  outstandingBalance  Float         @default(0) // Server-calculated: certifiedAmount - paidAmount
+
+  startDate           DateTime
+  endDate             DateTime
+  paymentTerms        String        @default("Monthly Interim Valuation (Less 10% Retention)")
+  performanceRating   Float         @default(4.7)
+  progressPct         Float         @default(0)
+
+  // Status: ACTIVE_ON_SITE, MOBILIZING, COMPLETED, ON_HOLD
+  status              String        @default("ACTIVE_ON_SITE")
+  notes               String?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@unique([organizationId, code])
+}
+
+model EquipmentAsset {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId            String?
+  project              Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  siteId               String?
+  site                 Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  assetCode            String       // e.g. EQP-001
+  name                 String       // e.g. Potain MC 85B Tower Crane (50m Jib)
+  // Categories (Section 21): TOWER_MOBILE_CRANE, EXCAVATOR_EARTHMOVING, CONCRETE_BATCH_PUMP, TIPPER_HAULAGE_TRUCK, GENERATOR_COMPRESSOR, COMPACTOR_ROLLER, SCAFFOLDING_FORMWORK
+  category             String       @default("TOWER_MOBILE_CRANE")
+  // Ownership: OWNED, HIRED_LEASED
+  ownershipType        String       @default("OWNED")
+  vendorOrLessor       String?      // e.g. Mantrac Kenya / Atlas Plant Hire
+  registrationOrSerial String       // e.g. KHMA 412D or SN-PTC-8841
+
+  operatorName         String?
+  operatorPhone        String?
+
+  // Availability: DEPLOYED_ACTIVE, AVAILABLE_YARD, UNDER_MAINTENANCE, OFF_HIRE
+  availabilityStatus   String       @default("DEPLOYED_ACTIVE")
+
+  dailyRate            Float        @default(0) // Daily lease or internal plant charge (KSh)
+  totalHoursLogged     Float        @default(0)
+  fuelLitresLogged     Float        @default(0)
+  totalOperatingCost   Float        @default(0)
+  nextServiceDueDate   DateTime?
+  notes                String?
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  maintenanceLogs      EquipmentMaintenanceLog[]
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@unique([organizationId, assetCode])
+}
+
+model EquipmentMaintenanceLog {
+  id                   String         @id @default(cuid())
+  organizationId       String
+  organization         Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  equipmentId          String
+  equipment            EquipmentAsset @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  projectId            String?
+  project              Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  logNumber            String         // e.g. MNT-2026-001
+  // Types: PREVENTIVE_SERVICE, BREAKDOWN_REPAIR, DOSHS_STATUTORY_INSPECTION, TYRE_HYDRAULIC_REPLACEMENT
+  maintenanceType      String         @default("PREVENTIVE_SERVICE")
+  title                String
+  serviceDate          DateTime       @default(now())
+  nextDueHoursOrDate   String?        // e.g. 2,500 Engine Hours or 2026-06-15
+  costAmount           Float          @default(0)
+  technicianOrWorkshop String         // e.g. Mantrac Field Service Team
+  // Status: COMPLETED, IN_WORKSHOP, SCHEDULED
+  status               String         @default("COMPLETED")
+  notes                String?
+
+  recordedById         String?
+  recordedBy           User?          @relation("MaintenanceRecorderRelation", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt            DateTime       @default(now())
+
+  @@index([organizationId, serviceDate])
+  @@index([equipmentId])
+  @@unique([organizationId, logNumber])
+}
+
+// ============================================================================
+// PHASE 8: DAILY SITE OPERATIONS (SITE REPORTS, PHOTOS, ISSUES/SNAGS & SAFETY)
+// ============================================================================
+
+model SiteReport {
+  id                        String        @id @default(cuid())
+  organizationId            String
+  organization              Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId                 String
+  project                   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId                    String?
+  site                      Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId                   String?
+  phase                     ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  reportNumber              String        // e.g. DSR-2026-001
+  reportDate                DateTime      @default(now())
+  // Type: DAILY, WEEKLY
+  reportType                String        @default("DAILY")
+  // Weather: SUNNY_CLEAR, PARTLY_CLOUDY, HEAVY_RAIN, OVERCAST_WINDY
+  weatherCondition          String        @default("SUNNY_CLEAR")
+  temperatureCelsius        Float         @default(25.0)
+  // Ground: DRY_FIRM, DAMP_WORKABLE, WATERLOGGED_MUDDY
+  groundCondition           String        @default("DRY_FIRM")
+
+  workersPresentCount       Int           @default(0)
+  subcontractorWorkersCount Int           @default(0)
+
+  workCompletedSummary      String
+  workPlannedNext           String
+  materialsReceivedNote     String?
+  equipmentUsedNote         String?
+  issuesSummaryNote         String?
+  safetyToolboxTalkTopic    String?
+  safetyIncidentsCount      Int           @default(0)
+  overallProgressDelta      Float         @default(0) // e.g. +1.5% progress gained today
+
+  // Status: SUBMITTED, REVIEWED, FLAGGED_DELAY
+  status                    String        @default("SUBMITTED")
+  notes                     String?
+
+  submittedById             String?
+  submittedBy               User?         @relation("SiteReportSubmitterRelation", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewedById              String?
+  reviewedBy                User?         @relation("SiteReportReviewerRelation", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
+
+  photos                    SitePhoto[]
+
+  @@index([organizationId, reportDate])
+  @@index([projectId])
+  @@unique([organizationId, reportNumber])
+}
+
+model SitePhoto {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId          String?
+  site            Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteReportId    String?
+  siteReport      SiteReport?   @relation(fields: [siteReportId], references: [id], onDelete: SetNull)
+
+  photoCode       String        // e.g. PHO-2026-001
+  // Category (Section 25): PROGRESS, MATERIALS_DELIVERY, DEFECT_SNAG, COMPLETED_WORK, SITE_CONDITION, SAFETY_COMPLIANCE
+  category        String        @default("PROGRESS")
+  title           String
+  caption         String?
+  locationTag     String        // e.g. Block A — 8th Floor Slab
+  imageUrl        String        // SVG / high-res construction visual URL
+
+  capturedAt      DateTime      @default(now())
+  uploadedById    String?
+  uploadedBy      User?         @relation("SitePhotoUploaderRelation", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime      @default(now())
+
+  @@index([organizationId, capturedAt])
+  @@index([projectId])
+  @@unique([organizationId, photoCode])
+}
+
+model ProjectIssue {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId          String?
+  site            Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId         String?
+  phase           ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  issueCode       String        // e.g. ISS-2026-001
+  title           String
+  // Category (Section 30): MATERIAL_DELAY, LABOUR_SHORTAGE, DESIGN_DRAWING_CLASH, BUDGET_VARIATION_RISK, WEATHER_DISRUPTION, QUALITY_DEFECT_SNAG, SUPPLIER_FAILURE, SAFETY_HAZARD
+  category        String        @default("QUALITY_DEFECT_SNAG")
+  // Severity: LOW, MEDIUM, HIGH, CRITICAL
+  severity        String        @default("MEDIUM")
+  // Status: OPEN, IN_PROGRESS, ESCALATED, RESOLVED, CLOSED
+  status          String        @default("OPEN")
+
+  description     String
+  impactSummary   String?       // e.g. Potential 2-day hold on 8th floor slab pour
+  resolutionPlan  String?
+
+  dueDate         DateTime
+  resolvedAt      DateTime?
+
+  reportedById    String?
+  reportedBy      User?         @relation("IssueReporterRelation", fields: [reportedById], references: [id], onDelete: SetNull)
+  assignedToId    String?
+  assignedTo      User?         @relation("IssueAssigneeRelation", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@unique([organizationId, issueCode])
+}
+
+model QualitySafetyInspection {
+  id                       String        @id @default(cuid())
+  organizationId           String
+  organization             Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId                String
+  project                  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId                   String?
+  site                     Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId                  String?
+  phase                    ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  recordNumber             String        // e.g. QSI-2026-001 or SAF-2026-001
+  // Domain: QUALITY_INSPECTION, SAFETY_AUDIT, SAFETY_INCIDENT
+  recordDomain             String        @default("QUALITY_INSPECTION")
+  // Type: REBAR_PRE_POUR_CHECK, CONCRETE_CUBE_SLUMP_TEST, MEP_PRESSURE_TEST, WATERPROOFING_FLOOD_TEST, SCAFFOLD_WORKING_AT_HEIGHT, PPE_TOOLBOX_AUDIT, NEAR_MISS_INCIDENT, FIRST_AID_INJURY, NCA_STATUTORY_AUDIT
+  inspectionOrIncidentType String        @default("REBAR_PRE_POUR_CHECK")
+
+  title                    String
+  locationArea             String        // e.g. Block A — 8th Floor Slab Grid B1–B6
+  inspectionDate           DateTime      @default(now())
+
+  // Result Status (Sections 31 & 32): PASSED, PASSED_WITH_OBSERVATIONS, REQUIRES_CORRECTION, FAILED_HOLD_POINT, INCIDENT_CONTAINED, UNDER_INVESTIGATION
+  resultStatus             String        @default("PASSED")
+  // Severity: NORMAL, MINOR, MAJOR, CRITICAL
+  severity                 String        @default("NORMAL")
+
+  findingsOrDefects        String
+  correctiveAction         String?
+  complianceScorePct       Float         @default(100)
+
+  inspectorOrReporterId    String?
+  inspectorOrReporter      User?         @relation("QSIInspectorRelation", fields: [inspectorOrReporterId], references: [id], onDelete: SetNull)
+  responsiblePersonId      String?
+  responsiblePerson        User?         @relation("QSIResponsibleRelation", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+
+  closedAt                 DateTime?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  @@index([organizationId, recordDomain])
+  @@index([projectId])
+  @@unique([organizationId, recordNumber])
+}
+
+// ============================================================================
+// PHASE 9: FINANCIAL MANAGEMENT (EXPENSES, CLIENT INVOICING, PAYMENTS & VARIATIONS)
+// ============================================================================
+
+model ProjectExpense {
+  id                     String        @id @default(cuid())
+  organizationId         String
+  organization           Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId              String
+  project                Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  siteId                 String?
+  site                   Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  phaseId                String?
+  phase                  ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  expenseNumber          String        // e.g. EXP-2026-001
+  // Categories (Section 22): MATERIALS, LABOUR, TRANSPORT, FUEL, EQUIPMENT, SUBCONTRACTORS, PERMITS, UTILITIES, ACCOMMODATION, MEALS, MISCELLANEOUS
+  category               String        @default("MATERIALS")
+  title                  String
+  description            String?
+  vendorOrPayee          String        // e.g. TotalEnergies Westlands / NCA / Kenya Power
+
+  amount                 Float         @default(0) // Net amount (KSh)
+  taxAmount              Float         @default(0) // VAT component if applicable
+  totalAmount            Float         @default(0) // Server-calculated: amount + taxAmount
+
+  expenseDate            DateTime      @default(now())
+  // Payment Methods: MPESA_PAYBILL, MPESA_TILL, BANK_RTGS_EFT, CASH_PETTY, CHEQUE, CARD
+  paymentMethod          String        @default("MPESA_PAYBILL")
+  paymentReference       String        // e.g. QKA892L01M or RTGS-KCB-99210
+  receiptAttachmentLabel String?       // e.g. ETR-Receipt-88412.pdf
+
+  // Status: APPROVED_POSTED, PENDING_APPROVAL, REJECTED
+  status                 String        @default("APPROVED_POSTED")
+
+  recordedById           String?
+  recordedBy             User?         @relation("ExpenseRecorderRelation", fields: [recordedById], references: [id], onDelete: SetNull)
+  approvedById           String?
+  approvedBy             User?         @relation("ExpenseApproverRelation", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([organizationId, expenseDate])
+  @@index([projectId, category])
+  @@unique([organizationId, expenseNumber])
+}
+
+model ClientInvoice {
+  id                      String        @id @default(cuid())
+  organizationId          String
+  organization            Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId               String
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId                String?
+  client                  Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  phaseId                 String?
+  phase                   ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  invoiceNumber           String        // e.g. INV-2026-001
+  valuationCertificateRef String?       // e.g. IPC #04 — QS Interim Valuation Certificate
+  title                   String
+  description             String
+
+  invoiceDate             DateTime      @default(now())
+  dueDate                 DateTime
+
+  subtotalAmount          Float         @default(0) // Certified works value before VAT
+  vatRate                 Float         @default(16.0)
+  taxAmount               Float         @default(0) // Server-calculated: subtotalAmount * (vatRate / 100)
+  retentionDeducted       Float         @default(0) // e.g. 10% retention held by client
+  totalAmount             Float         @default(0) // Server-calculated: subtotalAmount + taxAmount - retentionDeducted
+  paidAmount              Float         @default(0)
+  balanceAmount           Float         @default(0) // Server-calculated: totalAmount - paidAmount
+
+  // Statuses (Section 27): DRAFT, ISSUED, PARTIALLY_PAID, PAID, OVERDUE, CANCELLED
+  status                  String        @default("ISSUED")
+  notes                   String?
+
+  createdById             String?
+  createdBy               User?         @relation("InvoiceCreatorRelation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  payments                FinancialPayment[]
+
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@unique([organizationId, invoiceNumber])
+}
+
+model FinancialPayment {
+  id                  String         @id @default(cuid())
+  organizationId      String
+  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId           String
+  project             Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  paymentNumber       String         // e.g. PAY-2026-001
+  // Direction: INBOUND_CLIENT, OUTBOUND_SUPPLIER, OUTBOUND_SUBCONTRACTOR, OUTBOUND_SITE_EXPENSE
+  direction           String         @default("INBOUND_CLIENT")
+
+  clientId            String?
+  client              Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  invoiceId           String?
+  invoice             ClientInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  supplierId          String?
+  subcontractorId     String?
+  purchaseOrderId     String?
+
+  counterpartyName    String         // Client name, Supplier name, or Subcontractor name
+  amount              Float          @default(0)
+
+  // Methods (Section 28): MPESA_PAYBILL, MPESA_BUY_GOODS, MPESA_SEND_MONEY, BANK_RTGS_EFT, CHEQUE, CASH, CARD
+  paymentMethod       String         @default("BANK_RTGS_EFT")
+  referenceCode       String         // M-Pesa confirmation code (e.g. QKC884M19P) or Bank EFT Ref
+  mpesaPhoneOrPaybill String?        // Optional modular M-Pesa Paybill/Till/Phone metadata
+  paymentDate         DateTime       @default(now())
+
+  // Status: COMPLETED, PENDING_VERIFICATION, REVERSED
+  status              String         @default("COMPLETED")
+  notes               String?
+
+  recordedById        String?
+  recordedBy          User?          @relation("PaymentRecorderRelation", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime       @default(now())
+
+  @@index([organizationId, paymentDate])
+  @@index([projectId, direction])
+  @@unique([organizationId, paymentNumber])
+}
+
+model ProjectVariation {
+  id                     String        @id @default(cuid())
+  organizationId         String
+  organization           Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId              String
+  project                Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId                String?
+  phase                  ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  variationNumber        String        // e.g. VO-2026-001
+  title                  String
+  description            String
+  // Reason (Section 29): CLIENT_SCOPE_ADDITION, UNFORESEEN_GROUND_CONDITION, ARCHITECTURAL_REDESIGN, STATUTORY_CODE_CHANGE, MATERIAL_SPEC_UPGRADE
+  reason                 String        @default("CLIENT_SCOPE_ADDITION")
+
+  originalContractAmount Float         @default(0)
+  variationAmount        Float         @default(0) // Positive addition or negative omission
+  revisedContractAmount  Float         @default(0) // Server-calculated: originalContractAmount + variationAmount
+  costImpactBudget       Float         @default(0) // Associated budget adjustment
+  timeExtensionDays      Int           @default(0) // Extension of Time (EoT) in calendar days
+
+  // Statuses (Section 29): DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED
+  status                 String        @default("SUBMITTED")
+  supportingDocRef       String?       // e.g. Arch Instruction AI-014 / QS Valuation V-03
+
+  requestedDate          DateTime      @default(now())
+  approvedAt             DateTime?
+
+  requestedById          String?
+  requestedBy            User?         @relation("VariationRequesterRelation", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedById           String?
+  approvedBy             User?         @relation("VariationApproverRelation", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@unique([organizationId, variationNumber])
+}
+
+// ============================================================================
+// PHASE 10: DOCUMENTS, CLIENT PORTAL & MULTI-STAGE APPROVAL WORKFLOWS
+// ============================================================================
+
+model ApprovalWorkflowItem {
+  id                    String           @id @default(cuid())
+  organizationId        String
+  organization          Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId             String
+  project               Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId               String?
+  phase                 ProjectPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  clientId              String?
+  client                Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  documentId            String?
+  document              ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  approvalCode          String           // e.g. APR-2026-001
+  // Types: ARCHITECTURAL_SUBMITTAL, STRUCTURAL_SHOP_DRAWING, MATERIAL_SAMPLE_MARBLE, INTERIM_VALUATION_IPC, VARIATION_ORDER_SIGN_OFF, STATUTORY_PERMIT_NCA, PRACTICAL_COMPLETION_CERT
+  approvalType          String           @default("STRUCTURAL_SHOP_DRAWING")
+  title                 String
+  description           String
+  // Submitted To: CLIENT_REPRESENTATIVE, LEAD_ARCHITECT, STRUCTURAL_ENGINEER, QUANTITY_SURVEYOR, COMPANY_DIRECTOR
+  submittedToRole       String           @default("STRUCTURAL_ENGINEER")
+  // Priority: NORMAL, HIGH, CRITICAL_HOLD_POINT
+  priority              String           @default("HIGH")
+  financialImpactAmount Float            @default(0)
+  dueDate               DateTime
+
+  // Status: PENDING_SIGN_OFF, UNDER_CONSULTANT_REVIEW, APPROVED_SIGNED, REVISION_REQUESTED, REJECTED
+  status                String           @default("PENDING_SIGN_OFF")
+  decisionNotes         String?
+  digitalSignatureRef   String?          // e.g. STAMP-SHA256-8841B
+
+  requestedById         String?
+  requestedBy           User?            @relation("ApprovalRequesterRelation", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedById           String?
+  decidedBy             User?            @relation("ApprovalDeciderRelation", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt             DateTime?
+
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@unique([organizationId, approvalCode])
+}
+
+model ClientPortalUpdate {
+  id                      String       @id @default(cuid())
+  organizationId          String
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId               String
+  project                 Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId                String?
+  client                  Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  portalCode              String       // e.g. CPU-2026-001
+  // Categories: EXECUTIVE_PROGRESS_PACK, VALUATION_IPC_SUMMARY, VARIATION_APPROVAL_REQUEST, HANDOVER_SNAG_CLEARANCE, ARCHITECTURAL_FINISH_SELECTION
+  updateCategory          String       @default("EXECUTIVE_PROGRESS_PACK")
+  title                   String
+  summary                 String
+  completionSnapshotPct   Float        @default(0)
+  certifiedToDateAmount   Float        @default(0)
+  attachmentRefLabel      String?      // e.g. Monthly-Executive-Pack-Mar2026.pdf
+
+  // Client Sign-off Status: AWAITING_CLIENT_ACK, CLIENT_ACKNOWLEDGED, CLIENT_CHANGE_REQUESTED
+  clientSignOffStatus     String       @default("AWAITING_CLIENT_ACK")
+  clientFeedbackNotes     String?
+
+  publishedById           String?
+  publishedBy             User?        @relation("PortalPublisherRelation", fields: [publishedById], references: [id], onDelete: SetNull)
+  acknowledgedAt          DateTime?
+
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@index([organizationId, clientSignOffStatus])
+  @@index([projectId])
+  @@unique([organizationId, portalCode])
+}
+
+// ============================================================================
+// PHASE 12: NOTIFICATIONS & AUTOMATED WATCHDOG ENGINE
+// ============================================================================
+
+model AutomationWatchdogRule {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ruleCode             String       // e.g. AUTO-RULE-001
+  // Rule Types: BUDGET_THRESHOLD_EXCEEDED, OVERDUE_CLIENT_INVOICE, LOW_MATERIAL_STOCK_REORDER, PROJECT_SCHEDULE_DELAY, APPROACHING_TASK_DEADLINE, QUALITY_SAFETY_HOLD_POINT
+  ruleType             String       @default("BUDGET_THRESHOLD_EXCEEDED")
+  name                 String
+  description          String
+  thresholdCondition   String       // e.g. "Budget Line Exposure >= 85%"
+  severity             String       @default("WARNING") // INFO, WARNING, CRITICAL
+  channelsJson         String       @default("[\"IN_APP\",\"EMAIL\",\"WHATSAPP\"]") // Modular extension points for Email/SMS/WhatsApp
+  targetRoles          String       @default("Organization Owner, Project Manager, Quantity Surveyor")
+  isEnabled            Boolean      @default(true)
+  alertsGeneratedCount Int          @default(0)
+  lastTriggeredAt      DateTime?
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@unique([organizationId, ruleCode])
+}
+

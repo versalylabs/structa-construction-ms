@@ -1,0 +1,13 @@
+{
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": "file:./dev.db",
+    "JWT_SECRET": "structa-versaly-enterprise-construction-secret-key-2026"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "file:./dev.db",
+      "JWT_SECRET": "structa-versaly-enterprise-construction-secret-key-2026"
+    }
+  }
+}
